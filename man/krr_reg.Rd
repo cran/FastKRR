@@ -56,7 +56,7 @@ performed via sequential testing (early stopping) as implemented in the \pkg{CVS
 A parsnip model specification of class \code{"krr_reg"}.
 }
 \description{
-`krr_reg()` defines a Kernel Ridge Regression (KRR) model specification
+Defines a Kernel Ridge Regression model specification
 for use with the tidymodels ecosystem via \pkg{parsnip}. This spec can be
 paired with the \code{"fastkrr"} engine implemented in this package to fit
 exact or kernel approximation (Nyström, Pivoted Cholesky, Random Fourier Features) within
@@ -124,7 +124,7 @@ best_params = select_best(tune_results, metric = "rmse")
 
 # Finalized model spec using best parameter
 final_spec = finalize_model(krr_spec, best_params)
-final_wf <- workflow() \%>\%
+final_wf = workflow() \%>\%
   add_recipe(rec) \%>\%
   add_model(final_spec)
 
