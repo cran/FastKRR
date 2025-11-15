@@ -1,7 +1,7 @@
 Package: FastKRR
 Type: Package
 Title: Kernel Ridge Regression using 'RcppArmadillo'
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: 
   c(person(given = "Gyeongmin",
            family = "Kim",
@@ -27,14 +27,14 @@ Description: Provides core computational operations in C++ via 'RcppArmadillo', 
 License: GPL (>= 2)
 URL: https://github.com/kybak90/FastKRR, https://www.tidymodels.org
 BugReports: https://github.com/kybak90/FastKRR/issues
-Imports: CVST, generics, parsnip, Rcpp, rlang, tibble
+Imports: CVST, generics, parsnip, Rcpp, rlang, tibble, ggplot2
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: knitr, rmarkdown, dials, tidymodels, modeldata, dplyr
 SystemRequirements: OpenMP (optional)
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2025-10-08 05:03:46 UTC; bak
+Packaged: 2025-11-15 11:07:46 UTC; bak
 Author: Gyeongmin Kim [aut] (Sungshin Women's University),
   Seyoung Lee [aut] (Sungshin Women's University),
   Miyoung Jang [aut] (Sungshin Women's University),
@@ -43,4 +43,4 @@ Author: Gyeongmin Kim [aut] (Sungshin Women's University),
     University)
 Maintainer: Kwan-Young Bak <kybak@sungshin.ac.kr>
 Repository: CRAN
-Date/Publication: 2025-10-08 05:20:02 UTC
+Date/Publication: 2025-11-15 11:20:02 UTC
