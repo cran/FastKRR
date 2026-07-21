@@ -1,12 +1,13 @@
 #' Extract/print hyperparameters of fitted models
 #'
 #' @description
-#' \code{"param()"} is a generic S3 function that displays (and invisibly returns)
+#' \code{param} is a generic S3 function that displays (and invisibly returns)
 #' model hyperparameters. Methods are provided for \code{"krr"} objects.
 #'
 #' @param x An object.
 #' @param ... Additional arguments passed to methods.
 #' @return A named list of hyperparameters (invisibly); may print side effects.
+#' @keywords internal
 #' @export
 param = function(x, ...) UseMethod("param")
 
@@ -16,7 +17,7 @@ param.default = function(x, ...) {
   stop(sprintf("No 'param' method for objects of class: %s", paste(class(x), collapse=", ")))
 }
 
-#' Param method for fitted Kernel Ridge Regression models
+#' Displays hyperparameters of fitted Kernel Ridge Regression models
 #'
 #' @description
 #' Displays (and invisibly returns) the hyperparameters actually used by a
@@ -37,8 +38,18 @@ param.default = function(x, ...) {
 #' @param ... Additional arguments.
 #'
 #' @return
-#' Prints a human-readable panel and returns (invisibly) a named list
-#' of hyperparameters.
+#' Prints a human-readable panel to the console and invisibly returns a
+#' named list of class \code{"krr_params"} containing the extracted hyperparameters:
+#' \itemize{
+#'   \item \code{kernel}: Kernel type used ("gaussian" or "laplace").
+#'   \item \code{opt}: Kernel approximation method.
+#'   \item \code{selection_method}: Lambda tuning method.
+#'   \item \code{rho}: Kernel scaling parameter.
+#'   \item \code{lambda}: Regularization parameter.
+#'   \item \code{m}: Rank or number of random features used for approximation.
+#'   \item \code{eps}: Tolerance parameter (for pivoted Cholesky).
+#'   \item \code{n_threads}: Number of parallel threads used.
+#' }
 #'
 #' @seealso \code{\link{fastkrr}}
 #'
@@ -50,38 +61,38 @@ param.default = function(x, ...) {
 #' n = 50
 #' rho = 1
 #' X = matrix(runif(n*d, 0, 1), nrow = n, ncol = d)
-#' y = as.vector(sin(2*pi*rowMeans(X)^3) + rnorm(n, 0, 0.1))
+#' y = sin(2 * pi * rowMeans(X)^3) + rnorm(n, mean = 0, sd = 0.1)
 #'
-#' model = fastkrr(X, y, kernel="gaussian", opt="nystrom",
-#'               rho=1, lambda=1e-4, m=200, n_threads=4, fastcv=FALSE)
+#' data = data.frame(X, y = y)
 #'
+#' model = fastkrr(data = data, response = "y",
+#'                  kernel="gaussian", opt="pivoted",
+#'                  rho=1, lambda=lambda, n_threads = 1)
 #'
-#' class(model)
+#' # Inspect hyperparameters
 #' param(model)
 #'
 #' @export
 param.krr = function(x, ...) {
   model = x
-  at = attributes(model)
 
-  keys = c("rho","lambda","m","eps", "n_threads")
-  present = intersect(keys, names(at))
+  keys = c("kernel", "opt", "selection_method",
+           "rho", "lambda", "m", "eps", "n_threads")
+  present = intersect(keys, names(model))
 
-  out = at[present]
+  out = model[present]
   class(out) = c("krr_params", "list")
 
   # Call
   cat("Call:\n")
-  print(at$call)
+  print(model$call)
   cat("\n")
 
-  # core options -> table
-  core_keys = c("rho","lambda", "eps", "m", "n_threads")
-  core_keys = intersect(core_keys, present)
-  if (length(core_keys) > 0) {
-    df = as.data.frame(at[core_keys], optional = TRUE)
-    row.names(df) <- ""
-    cat("Parameters :\n")
+  # Parameters
+  if (length(present) > 0) {
+    df = as.data.frame(model[present], optional = TRUE)
+    row.names(df) = ""
+    cat("Parameters:\n")
     print(df)
     cat("\n")
   }

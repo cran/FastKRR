@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{A S3 object of class \code{krr} created by \code{\link{fastkrr}}.}
 
-\item{newdata}{New design matrix or data frame containing new observations
+\item{newdata}{A numeric design matrix containing new observations
 for which predictions are to be made. If \code{newdata} is missing, the function returns fitted values.}
 
 \item{...}{Additional arguments (currently ignored).}
@@ -25,13 +25,18 @@ for new data.
 # Data setting
 n = 30
 d = 1
+
 X = matrix(runif(n*d, 0, 1), nrow = n, ncol = d)
-y = as.vector(sin(2*pi*rowMeans(X)^3) + rnorm(n, 0, 0.1))
+y = sin(2 * pi * rowMeans(X)^3) + rnorm(n, mean = 0, sd = 0.1)
+
+data = data.frame(X, y = y)
+
 lambda = 1e-4
 rho = 1
 
 # Fitting model: pivoted
-model = fastkrr(X, y, kernel = "gaussian", rho = rho, lambda = lambda, opt = "pivoted")
+model = fastkrr(data = data, response = "y",
+                kernel = "gaussian", rho = rho, lambda = lambda, opt = "pivoted")
 
 # Predict
 new_n = 50
@@ -41,7 +46,6 @@ new_y = as.vector(sin(2*pi*rowMeans(new_x)^3) + rnorm(new_n, 0, 0.1))
 pred = predict(model, new_x)
 crossprod(pred - new_y) / new_n
 
-predict(model) == attributes(model)$fitted.values
 }
 \seealso{
 \code{\link{fastkrr}}, \code{\link{make_kernel}}

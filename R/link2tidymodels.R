@@ -9,7 +9,7 @@
 #'
 #'
 #' @param mode A single string; only `"regression"` is supported.
-#' @param kernel Kernel matrix \eqn{K} has two kinds of Kernel ("gaussian", "laplace").
+#' @param kernel Kernel matrix has two kinds of Kernel ("gaussian", "laplace").
 #' @param opt Method for constructing or approximating :
 #'  \describe{
 #'   \item{\code{"exact"}}{Construct the full kernel matrix
@@ -32,9 +32,16 @@
 #'  \code{opt = "nystrom"} or \code{opt = "rff"}, and for the
 #'   Laplace kernel (\code{kernel = "laplace"}).
 #' @param rho  Scaling parameter of the kernel(\eqn{\rho}).
-#' @param penalty Regularization parameter.
-#' @param fastcv If \code{TRUE}, accelerated cross-validation is
-#'   performed via sequential testing (early stopping) as implemented in the \pkg{CVST} package.
+#' @param penalty Regularization parameter. It must be a positive numeric
+#' value, a numeric vector containing at least three positive values, or
+#' \code{tune()}. When using the \pkg{tidymodels} interface for
+#' hyperparameter selection, setting \code{penalty = tune()} is recommended.
+#' Candidate values are then supplied through the \code{grid} argument of
+#' \code{tune_grid()} and evaluated using the resampling scheme specified
+#' by the user.
+#' @param na.rm Logical. If \code{TRUE}, rows containing missing values are
+#'   removed before fitting. Defaults to \code{FALSE}.
+#'
 #'
 #' @return A parsnip model specification of class \code{"krr_reg"}.
 #'
@@ -59,8 +66,8 @@
 #' ames_test  = testing(ames_split) # dim (588, 74)
 #'
 #' # Model spec
-#' krr_spec = krr_reg(kernel = "gaussian", opt = "exact",
-#'                    m = 50, eps = 1e-6, n_threads = 4,
+#' krr_spec = krr_reg(kernel = "gaussian", opt = "nystrom",
+#'                    m = 50, eps = 1e-6, n_threads = 1,
 #'                    rho = 1, penalty = tune()) %>%
 #'  set_engine("fastkrr") %>%
 #'  set_mode("regression")
@@ -115,7 +122,8 @@
 #'
 #' @export
 krr_reg = function(mode = "regression", kernel = NULL, opt = NULL, eps = NULL,
-                    n_threads = NULL, m = NULL, rho = NULL, penalty = NULL, fastcv = NULL) {
+                   n_threads = NULL, m = NULL, rho = NULL, penalty = NULL,
+                   na.rm = NULL) {
   if (mode != "regression") {
     rlang::abort("`mode` should be 'regression'.")
   }
@@ -127,7 +135,7 @@ krr_reg = function(mode = "regression", kernel = NULL, opt = NULL, eps = NULL,
     n_threads = rlang::enquo(n_threads),
     rho     = rlang::enquo(rho),
     penalty = rlang::enquo(penalty),
-    fastcv  = rlang::enquo(fastcv)
+    na.rm = rlang::enquo(na.rm)
   )
   parsnip::new_model_spec(
     "krr_reg",
@@ -202,11 +210,11 @@ make_krr_reg = function(){
     eng      = "fastkrr",
     parsnip  = "penalty",
     original = "lambda",
-    func     = list(pkg = "dials", fun = "penalty"),# func     = list(pkg = "base", fun = "identity"),
+    func     = list(pkg = "dials", fun = "penalty"),# func = list(pkg = "base", fun = "identity"),
     has_submodel = FALSE
   )
 
-  for (nm in c("kernel", "opt", "m", "eps", "n_threads", "rho", "fastcv")){
+  for (nm in c("kernel", "opt", "m", "eps", "n_threads", "rho", "na.rm")){
     parsnip::set_model_arg(
       model    = "krr_reg",
       eng      = "fastkrr",
@@ -218,7 +226,7 @@ make_krr_reg = function(){
   }
 
   # 4) fit function mapping
-  #    fastkrr(x, y, kernel, opt, m, rho, lambda, fastcv)
+  #    fastkrr(x, y, kernel, opt, m, rho, lambda, selection_method)
   parsnip::set_fit(
     model = "krr_reg",
     eng   = "fastkrr",
@@ -226,7 +234,7 @@ make_krr_reg = function(){
     value = list(
       interface = "matrix",
       protect   = c("x", "y"),
-      func      = c(pkg = "FastKRR", fun = "fastkrr"),
+      func      = c(pkg = "FastKRR", fun = "fastkrr_fit_wrapper"),
       args      = list(
         x      = rlang::expr(x),
         y      = rlang::expr(y),
@@ -237,7 +245,7 @@ make_krr_reg = function(){
         n_threads  = rlang::expr(n_threads),
         rho    = rlang::expr(rho),
         lambda = rlang::expr(penalty),
-        fastcv = rlang::expr(fastcv)
+        na.rm = rlang::expr(na.rm)
       ),
       defaults = list()
     )
@@ -296,23 +304,62 @@ make_krr_reg = function(){
 #' @importFrom stats update
 #' @exportS3Method update krr_reg
 update.krr_reg = function(object, parameters = NULL,
-                           kernel = NULL, opt = NULL, m = NULL, eps = NULL,
-                           n_threads = NULL, rho = NULL, fastcv = NULL, penalty = NULL,
-                           fresh = FALSE, ...) {
-  if (requireNamespace("parsnip", quietly = TRUE) &&
-      "update.model_spec" %in% getNamespaceExports("parsnip")) {
-    return(stats::update(
-      object,
-      kernel = kernel, opt = opt, m = m, eps = eps, n_threads = n_threads,
-      rho = rho, fastcv = fastcv, penalty = penalty,
-      parameters = parameters, fresh = fresh, ...
-    ))
+                          kernel = NULL, opt = NULL,
+                          m = NULL, eps = NULL,
+                          n_threads = NULL, rho = NULL,
+                          penalty = NULL, na.rm = NULL,
+                          fresh = FALSE, ...) {
+
+  # if (requireNamespace("parsnip", quietly = TRUE) &&
+  #     "update.model_spec" %in% getNamespaceExports("parsnip")) {
+  #   return(stats::update(
+  #     object,
+  #     kernel = kernel, opt = opt, m = m, eps = eps, n_threads = n_threads,
+  #     rho = rho, selection_method = selection_method, penalty = penalty,
+  #     parameters = parameters, fresh = fresh, ...
+  #   ))
+  # }
+
+  args_new = list()
+
+  if (!missing(kernel)) {
+    args_new$kernel = rlang::enquo(kernel)
   }
-  args_new = rlang::enquos(
-    kernel=kernel, opt=opt, m=m, eps=eps, n_threads=n_threads,
-    rho=rho, fastcv=fastcv, penalty=penalty,
-    .ignore_empty="all"
-  )
+
+  if (!missing(opt)) {
+    args_new$opt = rlang::enquo(opt)
+  }
+
+  if (!missing(m)) {
+    args_new$m = rlang::enquo(m)
+  }
+
+  if (!missing(eps)) {
+    args_new$eps = rlang::enquo(eps)
+  }
+
+  if (!missing(n_threads)) {
+    args_new$n_threads = rlang::enquo(n_threads)
+  }
+
+  if (!missing(rho)) {
+    args_new$rho = rlang::enquo(rho)
+  }
+
+  if (!missing(na.rm)) {
+    args_new$na.rm = rlang::enquo(na.rm)
+  }
+
+  if (!missing(penalty)) {
+    args_new$penalty = rlang::enquo(penalty)
+  }
+
+  args = if (isTRUE(fresh)) {
+    args_new
+  } else {
+    object$args[names(args_new)] = args_new
+    object$args
+  }
   object$args = if (fresh) args_new else utils::modifyList(object$args, args_new)
   object
 }
@@ -320,6 +367,55 @@ update.krr_reg = function(object, parameters = NULL,
 
 
 
+
+#' Internal bridge for parsnip fit interface
+#' @keywords internal
+#' @export
+fastkrr_fit_wrapper = function(x, y,
+                               kernel = "gaussian",
+                               opt = "exact",
+                               m = NULL,
+                               eps = 1e-6,
+                               rho = 1,
+                               lambda = NULL,
+                               n_threads = 4,
+                               verbose = FALSE,
+                               na.rm = FALSE) {
+
+  df = as.data.frame(x)
+
+  response_col = ".outcome"
+  while (response_col %in% names(df)) {
+    response_col = paste0(response_col, "_")
+  }
+  df[[response_col]] = y
+
+  fastkrr(
+    data              = df,
+    response          = response_col,
+    kernel            = kernel,
+    opt               = opt,
+    m                 = m,
+    eps               = eps,
+    rho               = rho,
+    lambda            = lambda,
+    n_threads         = n_threads,
+    verbose           = verbose,
+    na.rm             = na.rm
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+
 utils::globalVariables(c(
-  "x","y","opt","m", "eps","n_threads","rho","penalty","fastcv","object","new_data"
+  "x","y","opt","m", "eps","n_threads","rho","penalty", "na.rm", "object","new_data"
 ))

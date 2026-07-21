@@ -2,7 +2,7 @@
 % Please edit documentation in R/param.R
 \name{param.krr}
 \alias{param.krr}
-\title{Param method for fitted Kernel Ridge Regression models}
+\title{Displays hyperparameters of fitted Kernel Ridge Regression models}
 \usage{
 \method{param}{krr}(x, ...)
 }
@@ -13,8 +13,18 @@
 \item{...}{Additional arguments.}
 }
 \value{
-Prints a human-readable panel and returns (invisibly) a named list
-of hyperparameters.
+Prints a human-readable panel to the console and invisibly returns a
+named list of class \code{"krr_params"} containing the extracted hyperparameters:
+\itemize{
+  \item \code{kernel}: Kernel type used ("gaussian" or "laplace").
+  \item \code{opt}: Kernel approximation method.
+  \item \code{selection_method}: Lambda tuning method.
+  \item \code{rho}: Kernel scaling parameter.
+  \item \code{lambda}: Regularization parameter.
+  \item \code{m}: Rank or number of random features used for approximation.
+  \item \code{eps}: Tolerance parameter (for pivoted Cholesky).
+  \item \code{n_threads}: Number of parallel threads used.
+}
 }
 \description{
 Displays (and invisibly returns) the hyperparameters actually used by a
@@ -38,13 +48,15 @@ d = 1
 n = 50
 rho = 1
 X = matrix(runif(n*d, 0, 1), nrow = n, ncol = d)
-y = as.vector(sin(2*pi*rowMeans(X)^3) + rnorm(n, 0, 0.1))
+y = sin(2 * pi * rowMeans(X)^3) + rnorm(n, mean = 0, sd = 0.1)
 
-model = fastkrr(X, y, kernel="gaussian", opt="nystrom",
-              rho=1, lambda=1e-4, m=200, n_threads=4, fastcv=FALSE)
+data = data.frame(X, y = y)
 
+model = fastkrr(data = data, response = "y",
+                 kernel="gaussian", opt="pivoted",
+                 rho=1, lambda=lambda, n_threads = 1)
 
-class(model)
+# Inspect hyperparameters
 param(model)
 
 }

@@ -13,12 +13,11 @@
 \item{...}{Additional arguments (currently ignored).}
 }
 \value{
-A human-readable summary of the fitted KRR model to the console.
+Invisibly returns the input \code{krr} object after printing the summary to the console.
 }
 \description{
-Displays key information from a fitted Kernel Ridge Regression (KRR) model,
-including the original call, first few coefficients, a 6×6 block of the
-kernel (or approximated kernel) matrix, and the main kernel options.
+Displays a concise summary of key information from a fitted Kernel Ridge Regression (KRR) model,
+including the original function call and the main hyperparameter options used during fitting.
 }
 \examples{
 # Data setting
@@ -28,17 +27,17 @@ d = 1
 n = 50
 rho = 1
 X = matrix(runif(n*d, 0, 1), nrow = n, ncol = d)
-y = as.vector(sin(2*pi*rowMeans(X)^3) + rnorm(n, 0, 0.1))
+y = sin(2 * pi * rowMeans(X)^3) + rnorm(n, mean = 0, sd = 0.1)
+
+data = data.frame(X, y = y)
 
 # Example: exact
-model = fastkrr(X, y,
-                kernel = "gaussian", opt = "exact",
-                rho = rho, lambda = 1e-4)
-class(model)
+model = fastkrr(data = data, response = "y",
+                 kernel = "gaussian", opt = "exact",
+                 rho = rho, lambda = lambda)
 
 print(model)
 }
 \seealso{
-\code{\link{fastkrr}}, \code{\link{print.approx_kernel}},
-  \code{\link{print.kernel_matrix}}
+\code{\link{fastkrr}}, \code{\link{print.approx_kernel}}
 }

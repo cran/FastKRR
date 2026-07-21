@@ -9,29 +9,39 @@ using namespace arma;
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix make_kernel(const arma::mat& X,
-                      Nullable<NumericMatrix> X_new = R_NilValue,
-                      std::string kernel = "gaussian",
-                      double rho = 0,
-                      int n_threads = 4){
+                                Nullable<NumericMatrix> X_new = R_NilValue,
+                                std::string kernel = "gaussian",
+                                double rho = 1.0,
+                                Nullable<int> n_threads = R_NilValue){
 
   int max_threads = 1;
-  #ifdef _OPENMP
-    max_threads = omp_get_num_procs();
-  #endif
-  if (max_threads <= 3)
-    n_threads = 1;
-  else
-    n_threads = std::min(n_threads, max_threads - 1);
+#ifdef _OPENMP
+  max_threads = omp_get_num_procs();
+#endif
+
+  int final_threads = 1;
+  if (kernel == "laplace") {
+#ifdef _OPENMP
+    if (n_threads.isNull()) {
+      final_threads = std::max(1, max_threads / 2);
+    } else {
+      final_threads = Rcpp::as<int>(n_threads);
+    }
+    final_threads = (max_threads <= 3) ? 1 : std::min(final_threads, max_threads - 1);
+#else
+    final_threads = 1;
+#endif
+  }else{
+    final_threads = 1;
+  }
 
 
   if (X.n_rows == 0 || X.n_cols == 0) {
     stop("Input matrix X is empty");
   }
 
-  if(rho < 0){
+  if(rho <= 0){
     stop("rho must be positive");
-  }else if(rho == 0){
-    rho = 1.0;
   }
 
 
@@ -71,7 +81,7 @@ Rcpp::NumericMatrix make_kernel(const arma::mat& X,
     if(X_new.isNull()){ // symmetry matrix
 
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(n_threads) schedule(static)
+#pragma omp parallel for num_threads(final_threads) schedule(static)
 #endif
       for(int i = 0; i < n; ++i){
         arma::rowvec xi = X.row(i);
@@ -85,7 +95,7 @@ Rcpp::NumericMatrix make_kernel(const arma::mat& X,
       }
     }else{ // for prediction
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(n_threads) schedule(static)
+#pragma omp parallel for num_threads(final_threads) schedule(static)
 #endif
       for(int i = 0; i < n; ++i){
         arma::rowvec xi = X.row(i);
@@ -103,8 +113,6 @@ Rcpp::NumericMatrix make_kernel(const arma::mat& X,
   }
 
   Rcpp::NumericMatrix K_out = Rcpp::wrap(K);
-  K_out.attr("class") = Rcpp::CharacterVector::create("kernel_matrix");
-
 
   return K_out;
 }
