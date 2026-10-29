@@ -1,7 +1,7 @@
 Package: FastKRR
 Type: Package
 Title: Kernel Ridge Regression using 'RcppArmadillo'
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: 
   c(person(given = "Gyeongmin",
            family = "Kim",
@@ -33,11 +33,11 @@ Suggests: knitr, rmarkdown, dials, tidymodels, modeldata, dplyr,
         testthat (>= 3.0.0)
 SystemRequirements: OpenMP (optional)
 Encoding: UTF-8
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.1
 Config/testthat/edition: 3
+RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2026-07-21 09:10:23 UTC; KGM
+Packaged: 2026-10-29 06:26:05 UTC; User
 Author: Gyeongmin Kim [aut] (Sungshin Women's University),
   Seyoung Lee [aut] (Sungshin Women's University),
   Miyoung Jang [aut] (Sungshin Women's University),
@@ -46,4 +46,4 @@ Author: Gyeongmin Kim [aut] (Sungshin Women's University),
     University)
 Maintainer: Kwan-Young Bak <kybak@sungshin.ac.kr>
 Repository: CRAN
-Date/Publication: 2026-07-21 09:30:18 UTC
+Date/Publication: 2026-10-29 09:20:02 UTC
